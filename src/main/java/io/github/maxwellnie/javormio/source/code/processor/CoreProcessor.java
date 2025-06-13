@@ -42,8 +42,12 @@ public class CoreProcessor extends AbstractProcessor {
             if (options != null)
                 supportedOptions.addAll(Arrays.asList(options.split(",")));
             String sourceVersion = properties.getProperty("supported-source-version");
-            if (sourceVersion != null)
-                supportedSourceVersion = SourceVersion.valueOf(sourceVersion);
+            supportedSourceVersion = SourceVersion.latestSupported();
+            if (sourceVersion != null){
+                SourceVersion puginSupportedSourceVersion = SourceVersion.valueOf(sourceVersion);
+                if (puginSupportedSourceVersion.compareTo(supportedSourceVersion) > 0)
+                    throw new Exception("The supported source version of the plugin is greater than the supported source version of the compiler");
+            }
             String classNames = properties.getProperty("extension-plugin-classes");
             if (classNames == null)
                 return;
@@ -124,19 +128,21 @@ public class CoreProcessor extends AbstractProcessor {
                             lineSeparator +"CauseChain: " + getExceptionChain(exception),
                     null
             );
-        }
-        if (infos.length() > 0)
-            processingEnv.getMessager().printMessage(Diagnostic.Kind.WARNING, infos.toString(), null);
-        for (TypeElement annotation : annotations) {
-            List<CustomProcessor> customProcessors = this.elementHandlersMap.get(annotation.getQualifiedName().toString());
-            if (customProcessors != null) {
-                for (CustomProcessor customProcessor : customProcessors)
-                    customProcessor.process(roundEnv.getElementsAnnotatedWith(annotation), processingEnv, roundEnv);
-            } else {
-                processingEnv.getMessager().printMessage(Diagnostic.Kind.WARNING,
-                        "No handler for annotation " + annotation.getQualifiedName(), annotation);
+        }else {
+            if (infos.length() > 0)
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.WARNING, infos.toString(), null);
+            for (TypeElement annotation : annotations) {
+                List<CustomProcessor> customProcessors = this.elementHandlersMap.get(annotation.getQualifiedName().toString());
+                if (customProcessors != null) {
+                    for (CustomProcessor customProcessor : customProcessors)
+                        customProcessor.process(roundEnv.getElementsAnnotatedWith(annotation), processingEnv, roundEnv);
+                } else {
+                    processingEnv.getMessager().printMessage(Diagnostic.Kind.WARNING,
+                            "No handler for annotation " + annotation.getQualifiedName(), annotation);
+                }
             }
         }
+
         return true;
     }
 
